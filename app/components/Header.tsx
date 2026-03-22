@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { label: 'ニュース', href: '/' },
   { label: '用語集', href: '/glossary' },
   { label: 'Linuxコマンド', href: '/linux' },
+  { label: 'Gitコマンド', href: '/git' },
 ]
 
 export default function Header() {
