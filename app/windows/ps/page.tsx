@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
-type LinuxCommand = {
+type WindowsCommand = {
   id: number
   command: string
   description: string
   example: string
   category: string
   importance: number
+  type: string
 }
 
 const COLOR_PALETTE = [
@@ -25,13 +26,13 @@ const COLOR_PALETTE = [
   { bg: 'bg-cyan-50',   text: 'text-cyan-700',   border: 'border-cyan-200',   active: 'bg-cyan-600 text-white hover:bg-cyan-700',     inactive: 'bg-white text-cyan-600 border border-cyan-300 hover:bg-cyan-50' },
 ]
 
-export default function LinuxPage() {
-  const [items, setItems] = useState<LinuxCommand[]>([])
+export default function PowerShellPage() {
+  const [items, setItems] = useState<WindowsCommand[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState('すべて')
   const [query, setQuery] = useState('')
-  const [activeItem, setActiveItem] = useState<LinuxCommand | null>(null)
+  const [activeItem, setActiveItem] = useState<WindowsCommand | null>(null)
 
   const [categoryDefs, setCategoryDefs] = useState<string[]>([])
 
@@ -41,17 +42,17 @@ export default function LinuxPage() {
     const extra = Array.from(itemCats).filter((cat) => !categoryDefs.includes(cat)).sort()
     return ['すべて', ...ordered, ...extra]
   }, [items, categoryDefs])
+
   const colorMap = useMemo(
     () => Object.fromEntries(categories.slice(1).map((cat, i) => [cat, COLOR_PALETTE[i % COLOR_PALETTE.length]])),
     [categories],
   )
-  const defaultColor = { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' }
 
   useEffect(() => {
     async function fetchCommands() {
       const [commandsRes, categoriesRes] = await Promise.all([
-        supabase.from('linux_commands').select('*').order('command', { ascending: true }),
-        supabase.from('categories').select('name').eq('page_type', 'linux').order('sort_order', { ascending: true }),
+        supabase.from('windows_commands').select('*').eq('type', 'ps').order('command', { ascending: true }),
+        supabase.from('categories').select('name').eq('page_type', 'ps').order('sort_order', { ascending: true }),
       ])
 
       if (commandsRes.error) {
@@ -82,10 +83,12 @@ export default function LinuxPage() {
     return matchesCategory && matchesQuery
   })
 
+  const defaultColor = { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 py-10">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Linuxコマンド一覧</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">PowerShellコマンド一覧</h1>
         <p className="text-gray-500 mb-8">カテゴリを選んで絞り込めます</p>
 
         {/* Category filter buttons */}
@@ -94,8 +97,12 @@ export default function LinuxPage() {
             const isActive = selected === cat
             const color = colorMap[cat]
             const btnClass = cat === 'すべて'
-              ? isActive ? 'bg-gray-600 text-white hover:bg-gray-700' : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-              : isActive ? color.active : color.inactive
+              ? isActive
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+              : isActive
+                ? color.active
+                : color.inactive
             return (
               <button
                 key={cat}
@@ -115,7 +122,7 @@ export default function LinuxPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="コマンドを検索..."
-            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
         </div>
 
@@ -202,7 +209,7 @@ export default function LinuxPage() {
               {activeItem.example && (
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">使用例</p>
-                  <pre className="bg-gray-900 text-green-400 text-sm rounded-lg px-4 py-3 overflow-x-auto font-mono whitespace-pre-wrap">
+                  <pre className="bg-gray-900 text-blue-300 text-sm rounded-lg px-4 py-3 overflow-x-auto font-mono whitespace-pre-wrap">
                     {activeItem.example}
                   </pre>
                 </div>

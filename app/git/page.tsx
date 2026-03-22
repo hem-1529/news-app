@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 type GitCommand = {
@@ -12,48 +12,18 @@ type GitCommand = {
   importance: number
 }
 
-const CATEGORIES = [
-  'すべて',
-  '基本操作',
-  'ブランチ',
-  'リモート',
-  '履歴確認',
-  '取り消し',
-  'タグ',
-  '設定',
+const COLOR_PALETTE = [
+  { bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200',   active: 'bg-blue-600 text-white hover:bg-blue-700',     inactive: 'bg-white text-blue-600 border border-blue-300 hover:bg-blue-50' },
+  { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', active: 'bg-purple-600 text-white hover:bg-purple-700', inactive: 'bg-white text-purple-600 border border-purple-300 hover:bg-purple-50' },
+  { bg: 'bg-red-50',    text: 'text-red-700',    border: 'border-red-200',    active: 'bg-red-600 text-white hover:bg-red-700',       inactive: 'bg-white text-red-600 border border-red-300 hover:bg-red-50' },
+  { bg: 'bg-green-50',  text: 'text-green-700',  border: 'border-green-200',  active: 'bg-green-600 text-white hover:bg-green-700',   inactive: 'bg-white text-green-600 border border-green-300 hover:bg-green-50' },
+  { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', active: 'bg-orange-500 text-white hover:bg-orange-600', inactive: 'bg-white text-orange-500 border border-orange-300 hover:bg-orange-50' },
+  { bg: 'bg-pink-50',   text: 'text-pink-700',   border: 'border-pink-200',   active: 'bg-pink-500 text-white hover:bg-pink-600',     inactive: 'bg-white text-pink-500 border border-pink-300 hover:bg-pink-50' },
+  { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', active: 'bg-yellow-500 text-white hover:bg-yellow-600', inactive: 'bg-white text-yellow-600 border border-yellow-300 hover:bg-yellow-50' },
+  { bg: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200',   active: 'bg-teal-600 text-white hover:bg-teal-700',     inactive: 'bg-white text-teal-600 border border-teal-300 hover:bg-teal-50' },
+  { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', active: 'bg-indigo-600 text-white hover:bg-indigo-700', inactive: 'bg-white text-indigo-600 border border-indigo-300 hover:bg-indigo-50' },
+  { bg: 'bg-cyan-50',   text: 'text-cyan-700',   border: 'border-cyan-200',   active: 'bg-cyan-600 text-white hover:bg-cyan-700',     inactive: 'bg-white text-cyan-600 border border-cyan-300 hover:bg-cyan-50' },
 ]
-
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  基本操作: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-  ブランチ: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
-  リモート: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
-  履歴確認: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
-  取り消し: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-  タグ: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
-  設定: { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
-}
-
-const CATEGORY_BUTTON_COLORS: Record<string, string> = {
-  すべて: 'bg-gray-600 text-white hover:bg-gray-700',
-  基本操作: 'bg-blue-600 text-white hover:bg-blue-700',
-  ブランチ: 'bg-purple-600 text-white hover:bg-purple-700',
-  リモート: 'bg-green-600 text-white hover:bg-green-700',
-  履歴確認: 'bg-orange-500 text-white hover:bg-orange-600',
-  取り消し: 'bg-red-600 text-white hover:bg-red-700',
-  タグ: 'bg-yellow-500 text-white hover:bg-yellow-600',
-  設定: 'bg-teal-600 text-white hover:bg-teal-700',
-}
-
-const CATEGORY_BUTTON_INACTIVE: Record<string, string> = {
-  すべて: 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50',
-  基本操作: 'bg-white text-blue-600 border border-blue-300 hover:bg-blue-50',
-  ブランチ: 'bg-white text-purple-600 border border-purple-300 hover:bg-purple-50',
-  リモート: 'bg-white text-green-600 border border-green-300 hover:bg-green-50',
-  履歴確認: 'bg-white text-orange-500 border border-orange-300 hover:bg-orange-50',
-  取り消し: 'bg-white text-red-600 border border-red-300 hover:bg-red-50',
-  タグ: 'bg-white text-yellow-600 border border-yellow-300 hover:bg-yellow-50',
-  設定: 'bg-white text-teal-600 border border-teal-300 hover:bg-teal-50',
-}
 
 export default function GitPage() {
   const [items, setItems] = useState<GitCommand[]>([])
@@ -63,18 +33,33 @@ export default function GitPage() {
   const [query, setQuery] = useState('')
   const [activeItem, setActiveItem] = useState<GitCommand | null>(null)
 
+  const [categoryDefs, setCategoryDefs] = useState<string[]>([])
+
+  const categories = useMemo(() => {
+    const itemCats = new Set(items.map((item) => item.category))
+    const ordered = categoryDefs.filter((name) => itemCats.has(name))
+    const extra = Array.from(itemCats).filter((cat) => !categoryDefs.includes(cat)).sort()
+    return ['すべて', ...ordered, ...extra]
+  }, [items, categoryDefs])
+  const colorMap = useMemo(
+    () => Object.fromEntries(categories.slice(1).map((cat, i) => [cat, COLOR_PALETTE[i % COLOR_PALETTE.length]])),
+    [categories],
+  )
+  const defaultColor = { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' }
+
   useEffect(() => {
     async function fetchCommands() {
-      const { data, error } = await supabase
-        .from('git_commands')
-        .select('*')
-        .order('command', { ascending: true })
+      const [commandsRes, categoriesRes] = await Promise.all([
+        supabase.from('git_commands').select('*').order('command', { ascending: true }),
+        supabase.from('categories').select('name').eq('page_type', 'git').order('sort_order', { ascending: true }),
+      ])
 
-      if (error) {
-        setError(error.message)
+      if (commandsRes.error) {
+        setError(commandsRes.error.message)
       } else {
-        setItems(data ?? [])
+        setItems(commandsRes.data ?? [])
       }
+      setCategoryDefs((categoriesRes.data ?? []).map((c) => c.name))
       setLoading(false)
     }
 
@@ -105,19 +90,22 @@ export default function GitPage() {
 
         {/* Category filter buttons */}
         <div className="flex flex-wrap gap-2 mb-4">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelected(cat)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                selected === cat
-                  ? CATEGORY_BUTTON_COLORS[cat]
-                  : CATEGORY_BUTTON_INACTIVE[cat]
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+          {categories.map((cat) => {
+            const isActive = selected === cat
+            const color = colorMap[cat]
+            const btnClass = cat === 'すべて'
+              ? isActive ? 'bg-gray-600 text-white hover:bg-gray-700' : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+              : isActive ? color.active : color.inactive
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelected(cat)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${btnClass}`}
+              >
+                {cat}
+              </button>
+            )
+          })}
         </div>
 
         {/* Search box */}
@@ -146,11 +134,7 @@ export default function GitPage() {
         {!loading && !error && filtered.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2">
             {filtered.map((item) => {
-              const colors = CATEGORY_COLORS[item.category] ?? {
-                bg: 'bg-gray-50',
-                text: 'text-gray-700',
-                border: 'border-gray-200',
-              }
+              const colors = colorMap[item.category] ?? defaultColor
               return (
                 <div
                   key={item.id}
@@ -181,11 +165,7 @@ export default function GitPage() {
 
       {/* Modal */}
       {activeItem && (() => {
-        const colors = CATEGORY_COLORS[activeItem.category] ?? {
-          bg: 'bg-gray-50',
-          text: 'text-gray-700',
-          border: 'border-gray-200',
-        }
+        const colors = colorMap[activeItem.category] ?? defaultColor
         return (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
