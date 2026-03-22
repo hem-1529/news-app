@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 const NAV_LINKS = [
   { label: 'ニュース', href: '/' },
   { label: '用語集', href: '/glossary' },
+  { label: 'Linuxコマンド', href: '/linux' },
 ]
 
 export default function Header() {
